@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NestJS Video Stream</title>
+    <style>
+        body { background-color: #222; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        video { max-width: 80%; border: 2px solid #444; }
+    </style>
+</head>
+<body>
+    <video controls>
+        <source src="http://localhost:3000/stream/movie" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+</body>
+</html>
