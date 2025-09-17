@@ -9,6 +9,8 @@ export class StreamingService {
 
     async streamVideoWithFfmpeg(filename: string, res: Response) {
         const videoPath = join(process.cwd(), 'videos', filename);
+        
+        
 
         // FFmpeg arguments for on-the-fly transcoding
         const ffmpegArgs = [
@@ -18,6 +20,8 @@ export class StreamingService {
             '-movflags', 'frag_keyframe+empty_moov', // Optimizes for streaming
             '-f', 'mp4',              // Output format: MP4 container
             'pipe:1',                 // Output to stdout
+            '-preset', 'fast',        // Encoding speed/quality tradeoff
+            '-tune', 'zerolatency',  // Tune for low latency
         ];
 
         // Spawn the FFmpeg process

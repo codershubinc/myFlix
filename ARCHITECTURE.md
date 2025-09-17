@@ -1,4 +1,4 @@
-# Video Streaming Platform - System Architecture 
+# Video Streaming Platform - System Architecture
 
 ## 🏗️ Architecture Overview
 
@@ -323,7 +323,7 @@ class StreamingService {
     filename: string,
     req: Request,
     res: Response,
-    session: StreamSession
+    session: StreamSession,
   ) {
     const videoPath = join(this.videosPath, filename);
 
@@ -336,24 +336,24 @@ class StreamingService {
 
     // Log user activity for session tracking
     this.logStreamActivity(session, filename, range);
-    
+
     if (range) {
       const parts = range.replace(/bytes=/, '').split('-');
       const start = parseInt(parts[0], 10);
       const end = parts[1] ? parseInt(parts[1], 10) : stats.size - 1;
-      
+
       const videoStream = createReadStream(videoPath, { start, end });
-      
+
       res.writeHead(206, {
         'Content-Range': `bytes ${start}-${end}/${stats.size}`,
         'Accept-Ranges': 'bytes',
-        'Content-Length': (end - start) + 1,
+        'Content-Length': end - start + 1,
         'Content-Type': 'video/mp4',
       });
-      
+
       // Track stream in session
       session.updateActivity('streaming', { start, end, filename });
-      
+
       videoStream.pipe(res);
     } else {
       // Serve entire file for clients that don't support range requests
@@ -361,7 +361,7 @@ class StreamingService {
         'Content-Length': stats.size,
         'Content-Type': 'video/mp4',
       });
-      
+
       const videoStream = createReadStream(videoPath);
       session.updateActivity('streaming', { filename, fullFile: true });
       videoStream.pipe(res);
@@ -378,11 +378,11 @@ class StreamingService {
 class SessionService {
   private activeSessions = new Map<string, UserSession>();
   private readonly maxConcurrentSessions = 8;
-  
+
   async createUserSession(user: User): Promise<UserSession> {
     // 1. Check existing session
     let session = this.activeSessions.get(user.id);
-    
+
     if (!session) {
       // 2. Create new session
       session = new UserSession({
@@ -390,22 +390,22 @@ class SessionService {
         sessionId: `${user.id}_${Date.now()}`,
         preferences: user.streamingPreferences,
         startTime: new Date(),
-        lastActivity: new Date()
+        lastActivity: new Date(),
       });
-      
+
       this.activeSessions.set(user.id, session);
     }
-    
+
     // 3. Update activity tracking
     session.updateLastActivity();
-    
+
     return session;
   }
-  
+
   async cleanupInactiveSessions(): Promise<void> {
     const now = new Date();
     const inactivityTimeout = 30 * 60 * 1000; // 30 minutes
-    
+
     for (const [userId, session] of this.activeSessions) {
       if (now.getTime() - session.lastActivity.getTime() > inactivityTimeout) {
         this.activeSessions.delete(userId);
@@ -495,21 +495,21 @@ class UserSession {
     public readonly sessionId: string,
     public preferences: StreamingPreferences,
     public startTime: Date,
-    public lastActivity: Date
+    public lastActivity: Date,
   ) {}
-  
+
   updateActivity(action: string, metadata?: any): void {
     this.lastActivity = new Date();
     // Log activity for analytics
     this.logActivity(action, metadata);
   }
-  
+
   getStreamingContext(): StreamingContext {
     return {
       userId: this.userId,
       quality: this.preferences.preferredQuality,
       bandwidth: this.preferences.maxBandwidth,
-      device: this.preferences.deviceType
+      device: this.preferences.deviceType,
     };
   }
 }
@@ -520,16 +520,17 @@ class UserSession {
 ```typescript
 class StreamManager {
   private activeStreams = new Map<string, ActiveStream>();
-  
+
   async startStream(session: UserSession, videoId: string): Promise<void> {
     // Check concurrent stream limits
-    const userStreams = Array.from(this.activeStreams.values())
-      .filter(stream => stream.userId === session.userId);
-      
+    const userStreams = Array.from(this.activeStreams.values()).filter(
+      (stream) => stream.userId === session.userId,
+    );
+
     if (userStreams.length >= this.maxStreamsPerUser) {
       throw new Error('Maximum concurrent streams reached');
     }
-    
+
     // Create stream tracking
     const streamId = `${session.userId}_${Date.now()}`;
     this.activeStreams.set(streamId, {
@@ -537,7 +538,7 @@ class StreamManager {
       userId: session.userId,
       videoId,
       startTime: new Date(),
-      bytesStreamed: 0
+      bytesStreamed: 0,
     });
   }
 }
@@ -654,37 +655,46 @@ src/
     └── pipes/
 ```
 
-### 2. User Streaming Containers
+### 2. Session Management System
 
 **Responsibilities:**
 
-- Individual video streaming for specific users
-- User-specific video processing
-- Session state management
-- Personal playlists and preferences
+- Individual user session tracking
+- User-specific streaming preferences
+- Activity monitoring and analytics
+- Watch history and progress tracking
 
 **Technology Stack:**
 
-- **Base Image**: Node.js Alpine (lightweight)
-- **Framework**: Express.js (minimal overhead)
-- **Video Processing**: FFmpeg
-- **Storage**: Shared video volumes (read-only)
-- **Memory Limit**: 512MB per container
-- **CPU Limit**: 0.5 cores per container
+- **In-Memory Storage**: Map-based session store
+- **Persistence**: Redis for session backup
+- **Activity Tracking**: Event-driven logging
+- **Memory Management**: Automatic cleanup of inactive sessions
 
-**Container Structure:**
+**Session Structure:**
 
-```
-user-streaming-container/
-├── src/
-│   ├── app.js              # Express application
-│   ├── streaming.service.js # Video streaming logic
-│   ├── ffmpeg.service.js   # Video processing
-│   ├── session.service.js  # User session management
-│   └── health.js           # Health check endpoint
-├── Dockerfile
-├── package.json
-└── docker-entrypoint.sh
+```typescript
+interface UserSession {
+  userId: string;
+  sessionId: string;
+  preferences: {
+    quality: 'auto' | '480p' | '720p' | '1080p';
+    maxBandwidth: number;
+    deviceType: 'desktop' | 'mobile' | 'tv';
+  };
+  activity: {
+    startTime: Date;
+    lastActivity: Date;
+    streamsCount: number;
+    bytesStreamed: number;
+  };
+  watchHistory: Array<{
+    videoId: string;
+    watchTime: number;
+    progress: number;
+    lastWatched: Date;
+  }>;
+}
 ```
 
 ### 3. Database Layer
@@ -693,7 +703,7 @@ user-streaming-container/
 
 - **Users Table**: User accounts and authentication
 - **Videos Table**: Video metadata and file information
-- **Sessions Table**: Active user sessions and container mapping
+- **User_Sessions Table**: Active user sessions and activity tracking
 - **User_Videos Table**: User-specific video data (watch history, ratings)
 - **Playlists Table**: User-created playlists
 
@@ -707,6 +717,7 @@ CREATE TABLE users (
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(20) DEFAULT 'user',
+    streaming_preferences JSONB,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP,
     is_active BOOLEAN DEFAULT true
@@ -724,18 +735,17 @@ CREATE TABLE videos (
     resolution VARCHAR(20),
     format VARCHAR(10),
     thumbnail_path VARCHAR(500),
+    metadata JSONB, -- Additional video metadata
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Sessions table
+-- User sessions table
 CREATE TABLE user_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id),
-    container_id VARCHAR(100),
-    container_ip VARCHAR(45),
-    container_port INTEGER,
-    session_token VARCHAR(255),
+    session_id VARCHAR(255) UNIQUE NOT NULL,
+    session_data JSONB,
     expires_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -750,6 +760,7 @@ CREATE TABLE user_videos (
     watch_progress FLOAT DEFAULT 0, -- percentage completed
     rating INTEGER CHECK (rating >= 1 AND rating <= 5),
     last_watched TIMESTAMP,
+    watch_metadata JSONB, -- Quality watched, device used, etc.
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, video_id)
 );
@@ -782,10 +793,12 @@ CREATE TABLE playlist_videos (
 ```
 video:metadata:{video_id}     # Video metadata cache
 user:session:{user_id}        # User session cache
-container:health:{container_id} # Container health status
+user:preferences:{user_id}    # User streaming preferences
 video:popular                 # Popular videos list
 user:recently_watched:{user_id} # Recently watched videos
 video:thumbnails:{video_id}   # Thumbnail cache
+streaming:active             # Active streaming sessions
+analytics:hourly             # Hourly usage analytics
 ```
 
 **Cache Patterns:**
@@ -796,32 +809,35 @@ video:thumbnails:{video_id}   # Thumbnail cache
 
 ---
 
-## 🐳 Container Architecture
+## � Simplified Deployment Architecture
 
-### Container Orchestration Strategy
+### Single Application Deployment
 
-**Container Types:**
+**Container Strategy:**
 
-1. **API Gateway Container**: Main NestJS application
-2. **User Streaming Containers**: Individual user isolation
-3. **Database Container**: PostgreSQL
-4. **Cache Container**: Redis
-5. **Reverse Proxy Container**: Nginx
+1. **Main Application Container**: NestJS streaming application
+2. **Database Container**: PostgreSQL
+3. **Cache Container**: Redis
+4. **Reverse Proxy Container**: Nginx
 
 **Docker Compose Structure:**
 
 ```yaml
 version: '3.8'
 services:
-  # API Gateway
-  api-gateway:
-    build: ./api-gateway
+  # Main Streaming Application
+  streaming-app:
+    build: ./streaming-app
     ports:
       - '3000:3000'
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://...
-      - REDIS_URL=redis://...
+      - DATABASE_URL=postgresql://streaming_user:${DB_PASSWORD}@database:5432/streaming_platform
+      - REDIS_URL=redis://cache:6379
+      - VIDEOS_PATH=/app/videos
+      - MAX_CONCURRENT_STREAMS=8
+    volumes:
+      - videos_storage:/app/videos:ro
     depends_on:
       - database
       - cache
@@ -859,9 +875,8 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/ssl:/etc/nginx/ssl
-      - videos_storage:/var/www/videos:ro
     depends_on:
-      - api-gateway
+      - streaming-app
     networks:
       - streaming-network
 
@@ -880,52 +895,45 @@ networks:
     driver: bridge
 ```
 
-### User Container Management
+### Application Resource Management
 
-**Container Lifecycle:**
-
-1. **User Login** → Authenticate → Check existing container
-2. **Container Spawn** → Create new container if needed
-3. **Request Routing** → Route video requests to user container
-4. **Health Monitoring** → Regular health checks
-5. **Cleanup** → Remove container after inactivity timeout
-
-**Resource Limits per User Container:**
+**Resource Allocation Strategy:**
 
 ```yaml
-user-streaming-template:
-  image: streaming-platform/user-container
+streaming-app:
   deploy:
     resources:
       limits:
-        memory: 512M
-        cpus: '0.5'
+        memory: 2G # Total application limit
+        cpus: '2.0' # Use both cores of i5
       reservations:
-        memory: 256M
-        cpus: '0.25'
+        memory: 1G # Minimum guaranteed
+        cpus: '1.0' # Minimum CPU allocation
   environment:
-    - USER_ID=${USER_ID}
-    - CONTAINER_PORT=${ASSIGNED_PORT}
-    - VIDEO_PATH=/shared/videos
-  volumes:
-    - videos_storage:/shared/videos:ro
-    - user_temp:/tmp
-  networks:
-    - user-network
+    - MAX_CONCURRENT_STREAMS=8
+    - SESSION_TIMEOUT=1800000 # 30 minutes
+    - CHUNK_SIZE=2097152 # 2MB chunks for SSD
   healthcheck:
-    test: ['CMD', 'curl', '-f', 'http://localhost:${PORT}/health']
+    test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
     interval: 30s
     timeout: 10s
     retries: 3
 ```
 
+**Session-Based Resource Monitoring:**
+
+- Memory usage per active session: ~50MB
+- CPU usage per stream: ~10-15%
+- I/O optimization for SSD storage
+- Automatic session cleanup for inactive users
+
 ---
 
-## 🌐 Network Architecture
+## 🌐 Simplified Network Architecture
 
 ### Network Topology
 
-**Network Segmentation:**
+**Simplified Network Structure:**
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -934,65 +942,60 @@ user-streaming-template:
 └─────────────────────┬───────────────────────────────────────┘
                       │
 ┌─────────────────────┴───────────────────────────────────────┐
-│                 DMZ Network                                 │
-│            (Reverse Proxy - Nginx)                         │
+│                 Reverse Proxy                              │
+│                (Nginx - Port 80/443)                       │
 └─────────────────────┬───────────────────────────────────────┘
                       │
 ┌─────────────────────┴───────────────────────────────────────┐
 │              Application Network                            │
-│         (API Gateway, Database, Cache)                     │
-└─────────────────────┬───────────────────────────────────────┘
-                      │
-┌─────────────────────┴───────────────────────────────────────┐
-│              User Container Network                         │
-│           (Individual User Containers)                     │
+│    (NestJS App, Database, Cache - Internal)                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Port Allocation Strategy:**
+**Port Allocation:**
 
 - **80/443**: Nginx (Public access)
-- **3000**: API Gateway (Internal only)
+- **3000**: NestJS Application (Internal only)
 - **5432**: PostgreSQL (Internal only)
 - **6379**: Redis (Internal only)
-- **8000-8999**: User containers (Dynamic allocation)
 
 ### Load Balancing Strategy
 
 **Nginx Configuration:**
 
 ```nginx
-upstream api_gateway {
-    server api-gateway:3000;
+upstream streaming_app {
+    server streaming-app:3000;
     keepalive 32;
-}
-
-upstream user_containers {
-    least_conn;
-    # Dynamic upstream configuration
-    # Populated by container orchestrator
 }
 
 server {
     listen 80;
     server_name streaming.local;
 
-    # API Gateway routes
+    # Main application routes
     location /api/ {
-        proxy_pass http://api_gateway;
+        proxy_pass http://streaming_app;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
-    # User container routes
+    # Video streaming routes
     location /stream/ {
-        # Route to appropriate user container
-        # Based on session information
-        proxy_pass http://user_containers;
+        proxy_pass http://streaming_app;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_buffering off;
+        proxy_buffering off;  # Important for video streaming
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+
+    # Static assets (optional)
+    location /static/ {
+        root /var/www;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
     }
 }
 ```
@@ -1006,11 +1009,11 @@ server {
 **1. User Authentication Flow:**
 
 ```
-Client → Nginx → API Gateway → Database
+Client → Nginx → NestJS App → Database
                       ↓
                JWT Token Generated
                       ↓
-              Container Assigned/Created
+              Session Created/Updated
                       ↓
                Session Stored in Redis
 ```
@@ -1018,40 +1021,42 @@ Client → Nginx → API Gateway → Database
 **2. Video Streaming Flow:**
 
 ```
-Client → Nginx → API Gateway → User Container → Video File
-   ↑                               ↓
-   └─────── Direct Stream ←────────┘
+Client → Nginx → NestJS App → File System (SSD)
+   ↑                   ↓
+   └─── Direct Stream ←─┘
 ```
 
 **3. Video Metadata Flow:**
 
 ```
-Client → Nginx → API Gateway → Redis Cache
-                      ↓              ↑
-               (Cache Miss)    (Cache Hit)
-                      ↓              ↑
-                 Database ──────────┘
+Client → Nginx → NestJS App → Redis Cache
+                      ↓           ↑
+               (Cache Miss)  (Cache Hit)
+                      ↓           ↑
+                 Database ─────────┘
 ```
 
 ### Data Consistency Patterns
 
 **Eventual Consistency:**
 
-- User session data across containers
-- Video view counts and statistics
-- Container health status
+- User session data in memory vs Redis backup
+- Video view counts and streaming analytics
+- User activity logs and watch history
 
 **Strong Consistency:**
 
 - User authentication and authorization
 - Video file metadata
 - Critical user data (passwords, permissions)
+- Real-time session state
 
 **Cache Invalidation Strategy:**
 
-- Time-based TTL for frequently changing data
-- Event-based invalidation for critical updates
+- Time-based TTL for frequently changing data (30min sessions)
+- Event-based invalidation for critical updates (user preferences)
 - Write-through caching for video metadata
+- Lazy loading for user-specific data
 
 ---
 
@@ -1063,7 +1068,7 @@ Client → Nginx → API Gateway → Redis Cache
 
 1. **Network Level**: Firewall rules, private networks
 2. **Application Level**: JWT tokens, role-based access
-3. **Container Level**: Process isolation, resource limits
+3. **Session Level**: Session validation, activity tracking
 4. **Data Level**: Encrypted storage, secure connections
 
 **JWT Token Structure:**
@@ -1073,7 +1078,11 @@ Client → Nginx → API Gateway → Redis Cache
   "sub": "user_id",
   "username": "john_doe",
   "role": "user",
-  "container_id": "user_container_123",
+  "session_id": "session_123456",
+  "preferences": {
+    "quality": "1080p",
+    "device": "desktop"
+  },
   "iat": 1634567890,
   "exp": 1634654290
 }
@@ -1081,35 +1090,34 @@ Client → Nginx → API Gateway → Redis Cache
 
 **Role-Based Access Control (RBAC):**
 
-- **Admin**: Full system access, container management
-- **User**: Personal container access, video streaming
-- **Guest**: Limited access, no persistent sessions
+- **Admin**: Full system access, user management, analytics
+- **User**: Personal streaming access, preference management
+- **Guest**: Limited access, temporary sessions
 
-### Container Security
+### Session Security
 
-**Isolation Mechanisms:**
+**Session Isolation Mechanisms:**
 
-- **Process Isolation**: Separate PID namespaces
-- **Network Isolation**: Individual network namespaces
-- **File System Isolation**: Read-only video mounts
-- **Resource Isolation**: Memory and CPU limits
+- **Memory Isolation**: Separate session objects per user
+- **Data Isolation**: User-specific data access controls
+- **Activity Isolation**: Individual user activity tracking
+- **Resource Isolation**: Fair resource allocation per session
 
 **Security Policies:**
 
-```yaml
-security_opt:
-  - no-new-privileges:true
-  - seccomp:unconfined
-read_only: true
-tmpfs:
-  - /tmp
-cap_drop:
-  - ALL
-cap_add:
-  - CHOWN
-  - DAC_OVERRIDE
-  - SETGID
-  - SETUID
+```typescript
+// Session security configuration
+const sessionConfig = {
+  maxConcurrentSessions: 3,
+  sessionTimeout: 30 * 60 * 1000, // 30 minutes
+  maxInactivity: 15 * 60 * 1000, // 15 minutes
+  requireReauth: 24 * 60 * 60 * 1000, // 24 hours
+  secureHeaders: {
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-XSS-Protection': '1; mode=block',
+  },
+};
 ```
 
 ---

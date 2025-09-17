@@ -3,6 +3,7 @@ import { spawn } from 'child_process';
 import type { Request, Response } from 'express';
 import { createReadStream, statSync } from 'fs';
 import { join } from 'path';
+import { getAvailableAssets } from './utils/getAvalableAssets';
 
 @Controller('stream')
 export class StreamingController {
@@ -53,40 +54,34 @@ export class StreamingController {
         videoStream.pipe(res);
     }
     @Get('movies/list')
-    listMovies(@Res() res: Response) {
-        // Logic to list available movies
-        const mvs = spawn('find' , ['/home/swap/Downloads', '-type', 'f', '-name', '*.mkv']);
-        const movies: string[] = [];
-        mvs.stdout.on('data', (data) => {
-            console.log(`Movies found: ${data}`);
-            
-            const files  = data.toString().split('\n').filter((file) => file.trim() !== '');
-            movies.push(...files);
-        });
+    async listMovies(@Res() res: Response) {
+        const availableAssetsObj = {}
 
-        mvs.stderr.on('data', (data) => {
-            console.error(`Error listing movies: ${data}`);
-        });
+        const filesFromDownloads = await getAvailableAssets('/home/swap/Downloads');
+        availableAssetsObj['Downloads'] = filesFromDownloads;
 
-        mvs.on('close', (code) => {
-            if (code !== 0) {
-                console.error(`find process exited with code ${code}`);
-                return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Error listing movies');
-            }
-            res.json(movies);
-        });
+        const filesFromVideos = await getAvailableAssets('/home/swap/Videos');
+        availableAssetsObj['Videos'] = filesFromVideos;
 
-        // In case the process ends before we send the response
-        if (movies.length > 0) {
-            res.json(movies);
-        }
+        const filesFromMvs = await getAvailableAssets('/media/swap/MVS');
+        availableAssetsObj['MVS'] = filesFromMvs;
+
+        const filesFromWth = await getAvailableAssets('/media/swap/WTH1');
+        availableAssetsObj['WTH1'] = filesFromWth;
+
+
+
+
+
+        return res.status(HttpStatus.OK).json(availableAssetsObj);
+
     }
-    @Get('movies/stream/:filename')
-    streamMovie(@Param('filename') filename: string, @Res() res: Response , @Req() req: Request) {
-        const videoPath = join('/home/swap/Downloads', filename);
-        const stat = statSync(videoPath);
-        const fileSize = stat.size;
+    @Get('movies/stream')
+    streamMovie(@Param('filename') filename: string, @Res() res: Response, @Req() req: Request) {
+        const videoPath = req.query.path as string;
+        const { size: fileSize } = statSync(videoPath);
         const range = req.headers.range;
+        console.log(`Streaming video from path: ${videoPath}`);
 
         if (!range) {
             return res.status(HttpStatus.BAD_REQUEST).send('Requires Range header');
@@ -106,5 +101,7 @@ export class StreamingController {
         });
 
         videoStream.pipe(res);
+        console.log(`--------------------------------------------------------------------------------------`);
+
     }
 }
