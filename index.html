@@ -14,27 +14,27 @@
 <body>
     <div id="video-list"></div>
     <video controls>
-        <source src="http://localhost:3000/stream/movies/stream/Squirt_Games_2024_XxX_Parody_UNCENSORED_1080p_Japanese_WEB_DL_2.mkv" type="video/mp4">
+        <source src="http://192.168.1.108:3000/stream/movies/stream?path=/home/swap/Downloads/Squirt_Games_2024_Parody_1080p_.mkv" type="video/mp4">
         Your browser does not support the video tag.
     </video>
 </body>
 
 <script>
-    ;(async()=>{
-        const response = await fetch('http://192.168.1.108:3000/stream/movies/list');
-        const data = await response.json();
-        console.log(data);
-        const videoListDiv = document.getElementById('video-list');
-        data.MVS.forEach(videoUrl => {
-            const button = document.createElement('button');
-            button.textContent = videoUrl;
-            button.onclick = () => {
-                const videoElement = document.querySelector('video source');
-                videoElement.src = videoUrl;
-                videoElement.parentElement.load();
-            };
-            videoListDiv.appendChild(button);
-        });
-    })()
+    // ;(async()=>{
+    //     const response = await fetch('http://192.168.1.108:3000/stream/movies/list');
+    //     const data = await response.json();
+    //     console.log(data);
+    //     const videoListDiv = document.getElementById('video-list');
+    //     data.MVS.forEach(videoUrl => {
+    //         const button = document.createElement('button');
+    //         button.textContent = videoUrl;
+    //         button.onclick = () => {
+    //             const videoElement = document.querySelector('video source');
+    //             videoElement.src = videoUrl;
+    //             videoElement.parentElement.load();
+    //         };
+    //         videoListDiv.appendChild(button);
+    //     });
+    // })()
 </script>
 </html>

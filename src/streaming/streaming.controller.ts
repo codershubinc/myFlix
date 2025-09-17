@@ -77,7 +77,7 @@ export class StreamingController {
 
     }
     @Get('movies/stream')
-    streamMovie(@Param('filename') filename: string, @Res() res: Response, @Req() req: Request) {
+    streamMovie(@Res() res: Response, @Req() req: Request) {
         const videoPath = req.query.path as string;
         const { size: fileSize } = statSync(videoPath);
         const range = req.headers.range;
@@ -102,6 +102,5 @@ export class StreamingController {
 
         videoStream.pipe(res);
         console.log(`--------------------------------------------------------------------------------------`);
-
     }
 }
