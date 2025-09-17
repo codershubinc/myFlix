@@ -4,18 +4,18 @@ import { URL } from 'https://jslib.k6.io/url/1.0.0/index.js';
 
 // Test configuration
 export const options = {
-  stages: [
-    // Ramp up to 50 connections very quickly
-    { duration: '10s', target: 50 },
-    // Hold the peak load for 2 minutes
-    { duration: '2m', target: 50 },
-    // Ramp down
-    { duration: '10s', target: 0 },
-  ],
-  thresholds: {
-    'http_req_failed': ['rate<0.02'], // Allow for 2% failure rate
-    'http_req_duration': ['p(95)<5000'], // 95% of requests must complete below 5s
-  },
+    stages: [
+        // Ramp up to 50 connections very quickly
+        { duration: '10s', target: 50 },
+        // Hold the peak load for 2 minutes
+        { duration: '2m', target: 50 },
+        // Ramp down
+        { duration: '10s', target: 0 },
+    ],
+    thresholds: {
+        'http_req_failed': ['rate<0.02'], // Allow for 2% failure rate
+        'http_req_duration': ['p(95)<5000'], // 95% of requests must complete below 5s
+    },
 };
 
 // --- Test Setup ---
@@ -57,51 +57,51 @@ const videoFiles = [
 const CHUNK_SIZE = 1 * 1024 * 1024; // 1MB chunks
 
 export default function () {
-  // --- Select a random video for each user iteration ---
-  const randomVideoFile = videoFiles[Math.floor(Math.random() * videoFiles.length)];
+    // --- Select a random video for each user iteration ---
+    const randomVideoFile = videoFiles[Math.floor(Math.random() * videoFiles.length)];
 
-  // Updated URL construction to use the random file
-  const url = new URL(`${baseUrl}/stream/movies/stream`);
-  url.searchParams.append('path', randomVideoFile);
-  const videoUrl = url.toString();
+    // Updated URL construction to use the random file
+    const url = new URL(`${baseUrl}/stream/movies/stream`);
+    url.searchParams.append('path', randomVideoFile);
+    const videoUrl = url.toString();
 
-  console.log(`[VU=${__VU}] Requesting video: ${randomVideoFile}`);
-  
-  // 1. Initial request to get the video size from Content-Range header
-  const initialRes = http.get(videoUrl, { headers: { 'Range': 'bytes=0-1' } });
-  
-  const isStatusPartialContent = check(initialRes, {
-    'Initial request status is 206': (r) => r.status === 206,
-  });
+    // console.log(`[VU=${__VU}] Requesting video: ${randomVideoFile}`);
 
-  // Proceed only if the first request was successful
-  if (!isStatusPartialContent) {
-    console.error(`[VU=${__VU}] Initial request failed for ${randomVideoFile} with status ${initialRes.status}`);
-    return; // Abort this iteration
-  }
-  
-  // Note: For piped ffmpeg streams, we might not get a total size.
-  // We'll just stream chunks for a simulated duration.
+    // 1. Initial request to get the video size from Content-Range header
+    const initialRes = http.get(videoUrl, { headers: { 'Range': 'bytes=0-1' } });
 
-  // 2. Fire off 5 chunk requests in parallel for each user
-  const requests = [];
-  for (let i = 0; i < 5; i++) {
-    const start = i * CHUNK_SIZE;
-    const end = start + CHUNK_SIZE - 1;
-    requests.push(['GET', videoUrl, null, { headers: { 'Range': `bytes=${start}-${end}` } }]);
-  }
-
-  // http.batch sends all requests concurrently
-  const responses = http.batch(requests);
-
-  // Check that all parallel requests were successful
-  responses.forEach(res => {
-    check(res, {
-      'Parallel chunk request status is 206': (r) => r.status === 206,
+    const isStatusPartialContent = check(initialRes, {
+        'Initial request status is 206': (r) => r.status === 206,
     });
-  });
 
-  // Wait before this user loops again to simulate a pause in activity
-  sleep(10);
+    // Proceed only if the first request was successful
+    if (!isStatusPartialContent) {
+        console.error(`[VU=${__VU}] Initial request failed for ${randomVideoFile} with status ${initialRes.status}`);
+        return; // Abort this iteration
+    }
+
+    // Note: For piped ffmpeg streams, we might not get a total size.
+    // We'll just stream chunks for a simulated duration.
+
+    // 2. Fire off 5 chunk requests in parallel for each user
+    const requests = [];
+    for (let i = 0; i < 5; i++) {
+        const start = i * CHUNK_SIZE;
+        const end = start + CHUNK_SIZE - 1;
+        requests.push(['GET', videoUrl, null, { headers: { 'Range': `bytes=${start}-${end}` } }]);
+    }
+
+    // http.batch sends all requests concurrently
+    const responses = http.batch(requests);
+
+    // Check that all parallel requests were successful
+    responses.forEach(res => {
+        check(res, {
+            'Parallel chunk request status is 206': (r) => r.status === 206,
+        });
+    });
+
+    // Wait before this user loops again to simulate a pause in activity
+    sleep(10);
 }
 
