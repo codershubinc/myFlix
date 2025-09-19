@@ -1,4 +1,4 @@
-import { Controller, Get, Req, Res, HttpStatus, Param } from '@nestjs/common';
+import { Controller, Get, Req, Res, HttpStatus, Param, Ip } from '@nestjs/common';
 import { spawn } from 'child_process';
 import type { Request, Response } from 'express';
 import { createReadStream, statSync } from 'fs';
@@ -81,7 +81,21 @@ export class StreamingController {
         const videoPath = req.query.path as string;
         const { size: fileSize } = statSync(videoPath);
         const range = req.headers.range;
-        console.log(`Streaming video from path: ${videoPath}`);
+        const currentTime = new Date().toLocaleString();
+        let fileName: any = videoPath.split('/');
+        fileName = fileName[fileName.length - 1];
+
+        console.table({
+            reQuestedAt: currentTime,
+            fileName,
+            fileSize: `${(fileSize / (1024 * 1024 * 1024) > 1) ? (fileSize / (1024 * 1024 * 1024)).toFixed(2) + ' GB' : (fileSize / (1024 * 1024)).toFixed(2) + ' MB'}`,
+            range,
+            userAgent: req.headers['user-agent'] || 'Unknown',
+            host: req.headers.host || 'Unknown',
+            connection: req.headers.connection || 'Unknown',
+            IP: req.ip ? "request IP from req.ip: " + req.ip : (req.headers['x-forwarded-for'] ? "request IP from x-forwarded-for: " + req.headers['x-forwarded-for'] : 'Unknown'),
+            currentCunnection: req.headers['sec-websocket-key'] ? 'WebSocket' : (req.headers['upgrade-insecure-requests'] === '1' ? 'Browser' : 'Other'),
+        })
 
         if (!range) {
             return res.status(HttpStatus.BAD_REQUEST).send('Requires Range header');
