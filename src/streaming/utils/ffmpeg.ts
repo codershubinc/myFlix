@@ -1,4 +1,3 @@
-import { join } from 'path'; 
 import { spawn } from 'child_process';
 import { Injectable, Logger } from '@nestjs/common';
 
@@ -13,21 +12,25 @@ export class FfmpegService {
      */
 
     async streamVideoWithFfmpeg(filepath: string,) {
-        const videoPath =  filepath; // Use the provided file path directly
+        const videoPath = filepath; // Use the provided file path directly
 
 
         // FFmpeg arguments for on-the-fly transcoding
         const ffmpegArgs = [
-            '-i', videoPath,         // Input file
-            '-c:v', 'libx264',        // Video codec: H.264
-            '-c:a', 'aac',            // Audio codec: AAC
+            '-i', videoPath,                         // Input file
+            '-c:v', 'libx264',                       // Video codec: H.264
+            '-c:a', 'aac',                           // Audio codec: AAC
             '-movflags', 'frag_keyframe+empty_moov', // Optimizes for streaming
-            '-f', 'mp4',              // Output format: MP4 container
-            'pipe:1',                 // Output to stdout
-            '-preset', 'fast',        // Encoding speed/quality tradeoff
-            '-tune', 'zerolatency',  // Tune for low latency
-        ];
+            '-f', 'mp4',                             // Output format: MP4 container
+            'pipe:1',                                // Output to stdout
 
+            // --- New and Changed Parameters ---
+            '-preset', 'medium',                     // Slower preset for better compression
+            '-crf', '11',                            // Constant Rate Factor for consistent quality (lower is better)
+            '-vf', "scale=-1:720",                   // Video Filter: Scales video to 720p height
+            '-b:a', '160k',                          // Higher audio bitrate for better sound
+            '-max_muxing_queue_size', '1024'         // Increases buffer to prevent errors during processing
+        ];
         // Spawn the FFmpeg process
         const ffmpegProcess = spawn('ffmpeg', ffmpegArgs);
 
