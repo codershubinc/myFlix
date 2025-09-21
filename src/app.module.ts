@@ -9,8 +9,8 @@ import { APP_GUARD } from '@nestjs/core';
 @Module({
   imports: [
     ThrottlerModule.forRoot({
-      ttl: 30000, // 30 seconds in milliseconds
-      limit: 30, // 30 requests per 30 seconds
+      ttl: 10000, // 10 seconds in milliseconds
+      limit: 30, // 30 requests per 10 seconds
     }),
   ],
   controllers: [AppController, StreamingController], // Add it here
