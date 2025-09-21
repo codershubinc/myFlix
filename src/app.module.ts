@@ -15,11 +15,7 @@ import { APP_GUARD } from '@nestjs/core';
   ],
   controllers: [AppController, StreamingController], // Add it here
   providers: [
-    AppService, 
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    AppService,  
   ],
   exports: [],
 })
