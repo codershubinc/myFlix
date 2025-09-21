@@ -4,8 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { StreamingController } from './streaming/streaming.controller'; // Import it 
 import { ThrottlerGuard, ThrottlerModule } from 'nestjs-throttler';
-import { APP_GUARD } from '@nestjs/core';
-import { FfmpegService } from './streaming/utils/ffmpeg';
+import { APP_GUARD } from '@nestjs/core'; 
 
 @Module({
   imports: [
@@ -16,12 +15,12 @@ import { FfmpegService } from './streaming/utils/ffmpeg';
   ],
   controllers: [AppController, StreamingController], // Add it here
   providers: [
-    AppService,
-    FfmpegService,
+    AppService, 
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
   ],
+  exports: [],
 })
 export class AppModule { }

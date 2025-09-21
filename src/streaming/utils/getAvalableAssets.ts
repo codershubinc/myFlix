@@ -1,5 +1,6 @@
 import { spawn } from 'child_process';
 
+
 export async function getAvailableAssets(directory: string): Promise<string[]> {
     try {
         // Check if directory exists
@@ -42,7 +43,6 @@ function findVideoFiles(directory: string): Promise<string[]> {
             '-type', 'f',
             '(',
             '-name', '*.mkv',
-            '-o', '-name', '*.mp4',
             ')',
         ]);
 
@@ -50,7 +50,7 @@ function findVideoFiles(directory: string): Promise<string[]> {
         let errorOutput = '';
 
         find.stdout.on('data', (data) => {
-            const files =   data.toString().split('\n').filter(Boolean).map(file => 'http://192.168.1.108:3000/stream/movies/stream?path=' + file);
+            const files = data.toString().split('\n').filter(Boolean).map(file => 'http://192.168.1.108:3000/stream/movies/stream?path=' + file);
             availableAssets.push(...files);
         });
 

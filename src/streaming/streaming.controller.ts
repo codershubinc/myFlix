@@ -5,6 +5,8 @@ import { createReadStream, statSync } from 'fs';
 import { join } from 'path';
 import { getAvailableAssets } from './utils/getAvalableAssets';
 
+import { logDeviceConnection } from './utils/logDeviceConnection';
+
 @Controller('stream')
 export class StreamingController {
     @Get('movie')
@@ -63,7 +65,7 @@ export class StreamingController {
         const filesFromVideos = await getAvailableAssets('/home/swap/Videos');
         availableAssetsObj['Videos'] = filesFromVideos;
 
-        const filesFromMvs = await getAvailableAssets('/media/swap/MVS');
+        const filesFromMvs = await getAvailableAssets('/media/swap/MVS/MVS');
         availableAssetsObj['MVS'] = filesFromMvs;
 
         const filesFromWth = await getAvailableAssets('/media/swap/WTH1');
@@ -97,6 +99,11 @@ export class StreamingController {
             currentCunnection: req.headers['sec-websocket-key'] ? 'WebSocket' : (req.headers['upgrade-insecure-requests'] === '1' ? 'Browser' : 'Other'),
         })
 
+        // Log device connection for analytics
+        const ip = req.ip || (req.headers['x-forwarded-for'] as string) || 'Unknown';
+        const deviceName = req.headers['user-agent'] || 'Unknown';
+        const movieTitle = fileName;
+        logDeviceConnection(ip, deviceName, movieTitle, currentTime);
         if (!range) {
             return res.status(HttpStatus.BAD_REQUEST).send('Requires Range header');
         }
