@@ -1,7 +1,11 @@
-import { Controller, Get, Req, Res, HttpStatus, Param, Ip } from '@nestjs/common';
+import { Controller, Get, Post, Req, Res, HttpStatus, Param, Ip, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { spawn } from 'child_process';
 import type { Request, Response } from 'express';
-import { createReadStream, statSync } from 'fs';
+import { createReadStream, statSync, createWriteStream, mkdirSync } from 'fs';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import * as multer from 'multer';
 import { join } from 'path';
 import { getAvailableAssets } from './utils/getAvalableAssets';
 
@@ -59,17 +63,14 @@ export class StreamingController {
     async listMovies(@Res() res: Response) {
         const availableAssetsObj = {}
 
-        const filesFromDownloads = await getAvailableAssets('/home/swap/Downloads');
-        availableAssetsObj['Downloads'] = filesFromDownloads;
-
-        const filesFromVideos = await getAvailableAssets('/home/swap/Videos');
-        availableAssetsObj['Videos'] = filesFromVideos;
 
         const filesFromMvs = await getAvailableAssets('/media/swap/MVS/MVS');
         availableAssetsObj['MVS'] = filesFromMvs;
 
         const filesFromWth = await getAvailableAssets('/media/swap/WTH1');
         availableAssetsObj['WTH1'] = filesFromWth;
+        const filesFromWthTestUploads = await getAvailableAssets('/media/swap/MVS/testUploads');
+        availableAssetsObj['WTH1 Test Uploads'] = filesFromWthTestUploads;
 
 
 
@@ -78,6 +79,63 @@ export class StreamingController {
         return res.status(HttpStatus.OK).json(availableAssetsObj);
 
     }
+
+    @Post('upload/')
+    @UseInterceptors(FileInterceptor('file', {
+        storage: diskStorage({
+            destination: (req, file, cb) => {
+                console.log('Upload request received with query:', req.query);
+
+                const uploadPath = (req.query.path as string);
+                try {
+                    // Ensure the upload directory exists
+                    mkdirSync(uploadPath, { recursive: true });
+                    cb(null, uploadPath);
+                } catch (error) {
+                    cb(error as Error, uploadPath);
+                }
+            },
+            filename: (req, file, cb) => {
+                // Keep original filename
+                cb(null, file.originalname);
+            },
+        }),
+        limits: {
+            fileSize: 1024 * 1024 * 1024 * 10 // 10GB limit
+        }
+    }))
+    async uploadFile(
+        @UploadedFile() file: Express.Multer.File,
+        @Res() res: Response,
+        @Req() req: Request
+    ) {
+        const path = req.query.path as string;
+        console.log('Upload path:', path);
+
+        if (!file) {
+            return res.status(HttpStatus.BAD_REQUEST).json({ message: 'No file uploaded' });
+        }
+        if (!path) {
+            return res.status(HttpStatus.BAD_REQUEST).json({ message: 'No path specified' });
+        }
+        try {
+            console.log('File uploaded successfully to path:', path);
+
+            return res.status(HttpStatus.OK).json({
+                message: 'File uploaded successfully',
+                filename: file.originalname,
+                size: file.size,
+                path: `${path}/${file.originalname}`
+            });
+        } catch (error) {
+            console.error('Error handling file upload:', error);
+            return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+                message: 'Error handling file upload',
+                error: error.message
+            });
+        }
+    }
+
     @Get('movies/stream')
     streamMovie(@Res() res: Response, @Req() req: Request) {
         const videoPath = req.query.path as string;
@@ -96,7 +154,7 @@ export class StreamingController {
             host: req.headers.host || 'Unknown',
             connection: req.headers.connection || 'Unknown',
             IP: req.ip ? "request IP from req.ip: " + req.ip : (req.headers['x-forwarded-for'] ? "request IP from x-forwarded-for: " + req.headers['x-forwarded-for'] : 'Unknown'),
-            currentCunnection: req.headers['sec-websocket-key'] ? 'WebSocket' : (req.headers['upgrade-insecure-requests'] === '1' ? 'Browser' : 'Other'),
+            currentConnection: req.headers['sec-websocket-key'] ? 'WebSocket' : (req.headers['upgrade-insecure-requests'] === '1' ? 'Browser' : 'Other'),
         })
 
         // Log device connection for analytics
