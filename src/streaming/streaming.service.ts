@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Response } from 'express';
 import { spawn } from 'child_process';
 import { join } from 'path';
-import ffmpegService from './utils/ffmpeg';
+import ffmpegService from '../utils/ffmpeg';
 
 @Injectable()
 export class StreamingService {

@@ -109,11 +109,12 @@
         <div class="drop-zone" id="dropZone">
             <p>Drag & Drop your video file here</p>
             <p>or</p>
-            <input type="file" id="fileInput" class="file-input"
+            <input type="file" id="fileInput" class="file-input" multiple
                 accept=".mp4,.mkv,.avi,.mov,.wmv,.flv,.webm,.m4v,.mpeg,.mpg,.3gp,.ts,.mts,.m2ts,.vob">
-            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Select File</button>
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Select Files</button>
         </div>
         <div id="fileInfo"></div>
+        <div id="queueInfo" style="margin-top:10px; font-size:14px; color:#666;"></div>
         <input type="text" id="uploadPath" placeholder="Enter upload path (e.g., /home/user/videos)"
             value="/media/swap/MVS/testUploads"
             style="width: 100%; margin: 10px 0; padding: 8px; box-sizing: border-box;">
@@ -123,6 +124,8 @@
                 <div class="progress" id="progressBar"></div>
             </div>
             <div id="progressText">0%</div>
+            <div id="speedText" style="margin-top:5px; font-size:13px; color:#444;"></div>
+            <div id="remainingText" style="margin-top:2px; font-size:13px; color:#444;"></div>
         </div>
         <div id="status"></div>
     </div>
@@ -134,9 +137,14 @@
         const progressContainer = document.getElementById('progressContainer');
         const progressBar = document.getElementById('progressBar');
         const progressText = document.getElementById('progressText');
+        const speedText = document.getElementById('speedText');
+        const remainingText = document.getElementById('remainingText');
         const status = document.getElementById('status');
         const fileInfo = document.getElementById('fileInfo');
+        const queueInfo = document.getElementById('queueInfo');
         const uploadPath = document.getElementById('uploadPath');
+        let fileQueue = [];
+        let currentIndex = 0;
 
         // Drag and drop handlers
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -178,20 +186,34 @@
         });
 
         function handleFiles(files) {
-            if (files.length > 0) {
-                const file = files[0];
-                updateFileInfo(file);
-                uploadButton.disabled = false;
+            fileQueue = Array.from(files);
+            currentIndex = 0;
+            updateQueueInfo();
+            uploadButton.disabled = fileQueue.length === 0;
+            if (fileQueue.length > 0) {
+                updateFileInfo(fileQueue);
             }
         }
 
-        function updateFileInfo(file) {
-            const size = formatFileSize(file.size);
-            fileInfo.innerHTML = `
-                <strong>Selected File:</strong> ${file.name}<br>
-                <strong>Size:</strong> ${size}<br>
-                <strong>Type:</strong> ${file.type}
-            `;
+        function updateFileInfo(files) {
+            let html = '<div style="display:flex; flex-wrap:wrap; gap:12px;">';
+            files.forEach((file, idx) => {
+                html += `
+                <div style="border:1.5px solid #2196f3; background:#e3f2fd; border-radius:8px; padding:10px 14px; margin-bottom:8px; min-width:220px; box-shadow:0 1px 4px rgba(33,150,243,0.08);">
+                    <div style="font-weight:bold; color:#1565c0; font-size:15px;">${idx + 1}. ${file.name}</div>
+                    <div style="font-size:13px; color:#333; margin-top:4px;">${formatFileSize(file.size)} &nbsp;|&nbsp; <span style='color:#666;'>${file.type}</span></div>
+                </div>`;
+            });
+            html += '</div>';
+            fileInfo.innerHTML = html;
+        }
+
+        function updateQueueInfo() {
+            if (fileQueue.length === 0) {
+                queueInfo.textContent = '';
+            } else {
+                queueInfo.textContent = `Queued files: ${fileQueue.length}`;
+            }
         }
 
         function formatFileSize(bytes) {
@@ -203,51 +225,91 @@
         }
 
         uploadButton.addEventListener('click', async () => {
-            const file = fileInput.files[0];
             const path = uploadPath.value.trim();
-
-            if (!file) {
-                showStatus('Please select a file first.', 'error');
+            if (fileQueue.length === 0) {
+                showStatus('Please select files first.', 'error');
                 return;
             }
-
             if (!path) {
                 showStatus('Please enter an upload path.', 'error');
                 return;
             }
-
-            const formData = new FormData();
-            formData.append('file', file);
-
             uploadButton.disabled = true;
             progressContainer.style.display = 'block';
+            status.style.display = 'none';
+            await uploadNextFile(path);
+            uploadButton.disabled = false;
+        });
 
-            try {
-                const response = await fetch(`/stream/upload/?path=${encodeURIComponent(path)}`, {
-                    method: 'POST',
-                    body: formData,
-                    onUploadProgress: (progressEvent) => {
-                        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        async function uploadNextFile(path) {
+            if (currentIndex >= fileQueue.length) {
+                showStatus('All files uploaded!', 'success');
+                progressBar.style.width = '0%';
+                progressText.textContent = '0%';
+                speedText.textContent = '';
+                remainingText.textContent = '';
+                return;
+            }
+            const file = fileQueue[currentIndex];
+            showStatus(`Uploading ${file.name} (${currentIndex + 1}/${fileQueue.length}) ...`, '');
+            await uploadFile(file, path);
+            currentIndex++;
+            updateQueueInfo();
+            await uploadNextFile(path);
+        }
+
+        async function uploadFile(file, path) {
+            return new Promise((resolve, reject) => {
+                const formData = new FormData();
+                formData.append('file', file);
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', `/stream/upload/?path=${encodeURIComponent(path)}`);
+
+                let lastLoaded = 0;
+                let lastTime = Date.now();
+                let total = file.size;
+
+                xhr.upload.onprogress = function (e) {
+                    if (e.lengthComputable) {
+                        const percentCompleted = Math.round((e.loaded * 100) / e.total);
                         progressBar.style.width = percentCompleted + '%';
                         progressText.textContent = percentCompleted + '%';
+
+                        // Speed calculation
+                        const now = Date.now();
+                        const timeDiff = (now - lastTime) / 1000;
+                        const bytesDiff = e.loaded - lastLoaded;
+                        if (timeDiff > 0) {
+                            const speed = bytesDiff / timeDiff; // bytes/sec
+                            speedText.textContent = `Speed: ${formatFileSize(speed)}/s`;
+                        }
+                        lastLoaded = e.loaded;
+                        lastTime = now;
+
+                        // Remaining size
+                        const remaining = total - e.loaded;
+                        remainingText.textContent = `Remaining: ${formatFileSize(remaining)}`;
                     }
-                });
+                };
 
-                const result = await response.json();
+                xhr.onload = function () {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        showStatus(`File ${file.name} uploaded successfully!`, 'success');
+                        resolve();
+                    } else {
+                        showStatus(`Error uploading ${file.name}: ${xhr.statusText}`, 'error');
+                        reject();
+                    }
+                };
 
-                if (response.ok) {
-                    showStatus('File uploaded successfully!', 'success');
-                } else {
-                    throw new Error(result.message || 'Upload failed');
-                }
-            } catch (error) {
-                showStatus(`Error: ${error.message}`, 'error');
-                console.log('Error details:', error);
+                xhr.onerror = function () {
+                    showStatus(`Error uploading ${file.name}: Network error`, 'error');
+                    reject();
+                };
 
-            } finally {
-                uploadButton.disabled = false;
-            }
-        });
+                xhr.send(formData);
+            });
+        }
 
         function showStatus(message, type) {
             status.textContent = message;
