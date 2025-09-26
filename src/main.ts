@@ -10,7 +10,7 @@ async function bootstrap() {
   // Serve static files from the public directory
   app.useStaticAssets(join(__dirname, '..', 'public'));
 
-  await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
+  await app.listen(process.env.PORT ?? 3001, '0.0.0.0');
 
 }
 bootstrap();
