@@ -1,12 +1,9 @@
-import { Controller, Get, Post, Req, Res, HttpStatus, Param, Ip, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Req, Res, HttpStatus, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { spawn } from 'child_process';
 import type { Request, Response } from 'express';
-import { createReadStream, statSync, createWriteStream, mkdirSync } from 'fs';
+import { createReadStream, statSync, mkdirSync } from 'fs';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
-import * as multer from 'multer';
-import { join } from 'path'; 
+import { join } from 'path';
 import { getAvailableAssets } from 'src/utils/getAvailableAssets';
 import { logDeviceConnection } from 'src/utils/logDeviceConnection';
 
@@ -59,9 +56,17 @@ export class StreamingController {
         videoStream.pipe(res);
     }
     @Get('movies/list')
-    async listMovies(@Res() res: Response) {
+    async listMovies(@Res() res: Response,
+        @Req() req: Request
+    ) {
         const availableAssetsObj = {}
+        const path = req.query.path as string
 
+        if (path) return res.status(HttpStatus.OK).json(
+
+            await getAvailableAssets(path)
+
+        )
 
         const filesFromMvs = await getAvailableAssets('/media/swap/MVS/MVS');
         availableAssetsObj['MVS'] = filesFromMvs;
