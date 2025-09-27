@@ -15,6 +15,13 @@ export class AppController {
     return this.appService.getHello();
   }
 
+  @Get('/cloudflare')
+  async cloudflare() {
+    this.logger.log('Cloudflare request received');
+    // Implement your Cloudflare logic here
+    return this.runCommand('cloudflared', ['tunnel', '--url', 'http://localhost:3001']);
+  }
+
   @Get('/health')
   async health() {
     this.logger.log('Health check request received');
