@@ -24,6 +24,7 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.1.6",
     "@types/multer": "^2.0.0",
+    "dotenv": "^17.2.2",
     "mongoose": "^8.18.2",
     "multer": "^2.0.2",
     "nestjs-throttler": "^0.3.0",
