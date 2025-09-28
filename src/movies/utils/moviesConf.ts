@@ -1,38 +1,15 @@
-import { MongoClient, ObjectId } from "mongodb";
-import { MovieMetadata as BaseMovieMetadata } from "./movies.scema";
+import mongoose from 'mongoose';
+mongoose.connect('mongodb://127.0.0.1:27017/moviesDB');
 
-export interface MovieMetadata extends BaseMovieMetadata {
-    _id: ObjectId;
-}
+import { MovieModel } from './movies.schema';
 
-class MoviesConfig {
-    mongoUri = 'mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000&appName=mongosh+2.5.8';
-    databaseName = 'moviesDB';
-    collectionName = 'moviesCollection';
+export const moviesConfig = {
+    async createConfig(data: any) {
+        const doc = new MovieModel(data);
+        return await doc.save();
+    },
 
-    db: MongoClient | null = null;
-
-    async connect() {
-        if (!this.db) {
-            this.db = await MongoClient.connect(this.mongoUri, {});
-        }
-        return this.db;
-    }
-
-    async createConfig(data: MovieMetadata) {
-        const client = await this.connect();
-        const db = client.db(this.databaseName);
-        const collection = db.collection(this.collectionName);
-        const result = await collection.insertOne(data);
-        return result;
-    }
     async getConfig(id: string) {
-        const client = await this.connect();
-        const db = client.db(this.databaseName);
-        const collection = db.collection(this.collectionName);
-        const result = await collection.findOne({ _id: new ObjectId(id) });
-        return result;
+        return await MovieModel.findById(id).exec();
     }
-}
-
-export const moviesConfig = new MoviesConfig();
+};
