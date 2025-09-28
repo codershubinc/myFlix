@@ -4,8 +4,10 @@ import type { Request, Response } from 'express';
 import { createReadStream, statSync, mkdirSync } from 'fs';
 import { diskStorage } from 'multer';
 import { join } from 'path';
+import { createStream } from 'src/utils/createStream';
 import { getAvailableAssets } from 'src/utils/getAvailableAssets';
 import { logDeviceConnection } from 'src/utils/logDeviceConnection';
+import { MulterUploadInterceptor } from 'src/utils/multer';
 
 @Controller('stream')
 export class StreamingController {
@@ -85,29 +87,7 @@ export class StreamingController {
     }
 
     @Post('upload/')
-    @UseInterceptors(FileInterceptor('file', {
-        storage: diskStorage({
-            destination: (req, file, cb) => {
-                console.log('Upload request received with query:', req.query);
-
-                const uploadPath = (req.query.path as string);
-                try {
-                    // Ensure the upload directory exists
-                    mkdirSync(uploadPath, { recursive: true });
-                    cb(null, uploadPath);
-                } catch (error) {
-                    cb(error as Error, uploadPath);
-                }
-            },
-            filename: (req, file, cb) => {
-                // Keep original filename
-                cb(null, file.originalname);
-            },
-        }),
-        limits: {
-            fileSize: 1024 * 1024 * 1024 * 10 // 10GB limit
-        }
-    }))
+    @UseInterceptors(MulterUploadInterceptor('file'))
     async uploadFile(
         @UploadedFile() file: Express.Multer.File,
         @Res() res: Response,
@@ -142,48 +122,6 @@ export class StreamingController {
 
     @Get('movies/stream')
     streamMovie(@Res() res: Response, @Req() req: Request) {
-        const videoPath = req.query.path as string;
-        const { size: fileSize } = statSync(videoPath);
-        const range = req.headers.range;
-        const currentTime = new Date().toLocaleString();
-        let fileName: any = videoPath.split('/');
-        fileName = fileName[fileName.length - 1];
-
-        console.table({
-            reQuestedAt: currentTime,
-            fileName,
-            fileSize: `${(fileSize / (1024 * 1024 * 1024) > 1) ? (fileSize / (1024 * 1024 * 1024)).toFixed(2) + ' GB' : (fileSize / (1024 * 1024)).toFixed(2) + ' MB'}`,
-            range,
-            userAgent: req.headers['user-agent'] || 'Unknown',
-            host: req.headers.host || 'Unknown',
-            connection: req.headers.connection || 'Unknown',
-            IP: req.ip ? "request IP from req.ip: " + req.ip : (req.headers['x-forwarded-for'] ? "request IP from x-forwarded-for: " + req.headers['x-forwarded-for'] : 'Unknown'),
-            currentConnection: req.headers['sec-websocket-key'] ? 'WebSocket' : (req.headers['upgrade-insecure-requests'] === '1' ? 'Browser' : 'Other'),
-        })
-
-        // Log device connection for analytics
-        const ip = req.ip || (req.headers['x-forwarded-for'] as string) || 'Unknown';
-        const deviceName = req.headers['user-agent'] || 'Unknown';
-        const movieTitle = fileName;
-        logDeviceConnection(ip, deviceName, movieTitle, currentTime);
-        if (!range) {
-            return res.status(HttpStatus.BAD_REQUEST).send('Requires Range header');
-        }
-
-        const parts = range.replace(/bytes=/, '').split('-');
-        const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-        const chunkSize = (end - start) + 1;
-
-        const videoStream = createReadStream(videoPath, { start, end });
-        res.writeHead(HttpStatus.PARTIAL_CONTENT, {
-            'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-            'Accept-Ranges': 'bytes',
-            'Content-Length': chunkSize,
-            'Content-Type': 'video/mp4',
-        });
-
-        videoStream.pipe(res);
-        console.log(`--------------------------------------------------------------------------------------`);
+        return createStream(res, req);
     }
 }

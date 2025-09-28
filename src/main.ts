@@ -11,9 +11,9 @@ async function bootstrap() {
     // Serve static files from the public directory
     app.useStaticAssets(join(__dirname, '..', 'public'));
     
-    await app.listen(process.env.PORT ?? 3001, '0.0.0.0');
-    const appUrl = await app.getUrl( ).catch(() => 'err http://localhost:3001');
-    console.log('Starting server on port', process.env.PORT ?? 3001, 'uri', appUrl);
+    await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
+    const appUrl = await app.getUrl( ).catch(() => 'err http://localhost:3000');
+    console.log('Starting server on port', process.env.PORT ?? 3000, 'uri', appUrl);
   } catch (error) {
     console.error('Error starting server:', error);
   }
