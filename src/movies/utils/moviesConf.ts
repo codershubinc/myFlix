@@ -12,4 +12,5 @@ export const moviesConfig = {
     async getConfig(id: string) {
         return await MovieModel.findById(id).exec();
     }
+    
 };
