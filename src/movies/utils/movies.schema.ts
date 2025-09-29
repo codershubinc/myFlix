@@ -1,5 +1,23 @@
 import { Schema, Document, model, ObjectId } from 'mongoose';
- 
+export interface Movie  { 
+    title: string;
+    description?: string;
+    releaseDate?: Date;
+    genres?: string[];
+    duration?: number; // in minutes
+    director?: string;
+    cast?: string[];
+    language?: string;
+    country?: string;
+    rating?: number; // e.g., IMDb rating
+    tags?: string[];
+    filePath: string; // path to the movie file
+    fileSize?: number; // in bytes
+    format?: string; // e.g., mp4, mkv
+    thumbnailPath?: string; // path to the thumbnail image
+    createdAt?: Date;
+    updatedAt?: Date;
+}
 
 export const MovieSchema = new Schema({
     _id: { type: Schema.Types.ObjectId, auto: true },

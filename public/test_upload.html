@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Test Movie Upload</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2em;
+    }
+
+    form {
+      max-width: 500px;
+      margin: auto;
+      padding: 2em;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    label {
+      display: block;
+      margin-top: 1em;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      padding: 0.5em;
+      margin-top: 0.2em;
+    }
+
+    button {
+      margin-top: 1.5em;
+      padding: 0.7em 2em;
+      font-size: 1em;
+    }
+
+    .result {
+      margin-top: 2em;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>Upload Movie (Test Form)</h2>
+  <form id="uploadForm" enctype="multipart/form-data">
+    <label>File
+      <input type="file" name="file" required>
+    </label>
+    <label>Title
+      <input type="text" name="title" value="Test Movie" required>
+    </label>
+    <label>Description
+      <textarea name="description">A test movie upload</textarea>
+    </label>
+    <label>Release Date
+      <input type="text" name="releaseDate" value="2025-09-29">
+    </label>
+    <label>Genres
+      <input type="text" name="genres" value="Action,Drama">
+    </label>
+    <label>Duration (min)
+      <input type="text" name="duration" value="120">
+    </label>
+    <label>Director
+      <input type="text" name="director" value="Jane Doe">
+    </label>
+    <label>Cast
+      <input type="text" name="cast" value="Actor1,Actor2">
+    </label>
+    <label>Language
+      <input type="text" name="language" value="English">
+    </label>
+    <label>Country
+      <input type="text" name="country" value="USA">
+    </label>
+    <label>Rating
+      <input type="text" name="rating" value="8.5">
+    </label>
+    <label>Tags
+      <input type="text" name="tags" value="test,upload">
+    </label>
+    <label>File Size
+      <input type="text" name="fileSize" value="104857600">
+    </label>
+    <label>Format
+      <input type="text" name="format" value="mp4">
+    </label>
+    <label>Thumbnail Path
+      <input type="text" name="thumbnailPath" value="/path/to/thumbnail.jpg">
+    </label>
+    <label>Path (Upload Directory)
+      <input type="text" name="path" value="/media/swap/MVS/testUploads" required>
+    </label>
+    <button type="submit">Upload</button>
+  </form>
+  <div class="result" id="result"></div>
+  <script>
+    document.getElementById('uploadForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+      const resultDiv = document.getElementById('result');
+      resultDiv.textContent = 'Uploading...';
+      try {
+        const res = await fetch('http://192.168.1.109:3000/movies/t', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        resultDiv.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        resultDiv.textContent = 'Error: ' + err;
+      }
+    });
+  </script>
+</body>
+
+</html>
