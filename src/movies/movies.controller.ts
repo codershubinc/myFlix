@@ -1,10 +1,9 @@
-import { Controller, Get, HttpStatus, Post, Req, Res, UploadedFile, UseInterceptors } from "@nestjs/common";
+import { Controller, Get, HttpStatus, Post, Req, Res, UploadedFile, UseInterceptors, } from "@nestjs/common";
 import type { Request, Response } from "express";
 import { getAvailableAssets } from "src/utils/getAvailableAssets";
 import { moviesConfig } from "./utils/moviesConf";
-import fs from 'fs';
 import { MulterUploadInterceptor } from "src/utils/multer";
-
+import fs from 'fs';
 
 @Controller('movies')
 export class MoviesController {
@@ -16,35 +15,31 @@ export class MoviesController {
         availableAssetsObj['TestUploads'] = await getAvailableAssets('/media/swap/MVS/testUploads');
         res.status(HttpStatus.OK).json(availableAssetsObj);
     }
-
-    @Post('/t')
+    @Post('upload')
     @UseInterceptors(MulterUploadInterceptor('file'))
-    async uploadMovie(
-        @Req() req: any,
-        @Res() res: any,
+    async uploadFile(
         @UploadedFile() file: Express.Multer.File,
+        @Req() req: Request,
+        @Res() res: Response
     ) {
-        console.log('file', file);
+        const { title  } = req.body as { title: string};
+        console.log('req.body ==========================================', req.body);
+        console.log('file ==========================================', file);
 
-        const { path } = req.body
-        // console.log(req.body);
+        // Compute new path/filename using body data
+        const newPath = `/home/swap/Github/video-streaming-app/uploads/${title.trim().replaceAll(' ', '_')}.${file.originalname.split('.').pop()}`;
+        console.log('newPath ==========================================', newPath);
 
-        if (!file) {
-            return res.status(HttpStatus.BAD_REQUEST).json({ message: 'No file uploaded' });
-        }
-        if (!path) {
-            return res.status(HttpStatus.BAD_REQUEST).json({ message: 'No path specified' });
-        }
+        fs.renameSync(file.path, newPath);
 
-
-        return res.status(HttpStatus.OK).json({
-            message: 'File uploaded successfully',
+        // Respond with new file info
+        return res.status(200).json({
+            message: 'File uploaded and moved',
             filename: file.originalname,
-            size: file.size,
-            path: `${path}/${file.originalname}`
-        });
+            newPath,
+            body: req.body,
+        }); 
     }
-
 
     @Get('config/r/:id')
     async readMovieConfig(@Req() req: Request, @Res() res: Response) {
@@ -64,4 +59,23 @@ export class MoviesController {
         }
     }
 
-}   
+    @Post('/upload')
+    @UseInterceptors(MulterUploadInterceptor('file')) // saves to 'uploads/' first
+    async uploadMovie(@Req() req, @Res() res) {
+        const { title } = req.body;
+        const file = req.file;
+
+        // Compute new path/filename using body data
+        const newPath = `/uploads/${title}_${file.originalname}`;
+        fs.renameSync(file.path, newPath);
+
+        // Respond with new file info
+        return res.status(200).json({
+            message: 'File uploaded and moved',
+            filename: file.originalname,
+            newPath,
+            body: req.body,
+        });
+    }
+
+}

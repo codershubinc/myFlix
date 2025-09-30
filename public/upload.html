@@ -115,6 +115,8 @@
         </div>
         <div id="fileInfo"></div>
         <div id="queueInfo" style="margin-top:10px; font-size:14px; color:#666;"></div>
+        <input type="text" id="titleInput" placeholder="Enter movie title"
+            style="width: 100%; margin: 10px 0; padding: 8px; box-sizing: border-box;">
         <input type="text" id="uploadPath" placeholder="Enter upload path (e.g., /home/user/videos)"
             value="/media/swap/MVS/testUploads"
             style="width: 100%; margin: 10px 0; padding: 8px; box-sizing: border-box;">
@@ -226,6 +228,7 @@
 
         uploadButton.addEventListener('click', async () => {
             const path = uploadPath.value.trim();
+            const title = document.getElementById('titleInput').value.trim();
             if (fileQueue.length === 0) {
                 showStatus('Please select files first.', 'error');
                 return;
@@ -234,14 +237,18 @@
                 showStatus('Please enter an upload path.', 'error');
                 return;
             }
+            if (!title) {
+                showStatus('Please enter a title.', 'error');
+                return;
+            }
             uploadButton.disabled = true;
             progressContainer.style.display = 'block';
             status.style.display = 'none';
-            await uploadNextFile(path);
+            await uploadNextFile(path, title);
             uploadButton.disabled = false;
         });
 
-        async function uploadNextFile(path) {
+        async function uploadNextFile(path, title) {
             if (currentIndex >= fileQueue.length) {
                 showStatus('All files uploaded!', 'success');
                 progressBar.style.width = '0%';
@@ -252,18 +259,19 @@
             }
             const file = fileQueue[currentIndex];
             showStatus(`Uploading ${file.name} (${currentIndex + 1}/${fileQueue.length}) ...`, '');
-            await uploadFile(file, path);
+            await uploadFile(file, path, title);
             currentIndex++;
             updateQueueInfo();
-            await uploadNextFile(path);
+            await uploadNextFile(path, title);
         }
 
-        async function uploadFile(file, path) {
+        async function uploadFile(file, path, title) {
             return new Promise((resolve, reject) => {
                 const formData = new FormData();
                 formData.append('file', file);
+                formData.append('title', title);
                 const xhr = new XMLHttpRequest();
-                xhr.open('POST', `/stream/upload/?path=${encodeURIComponent(path)}`);
+                xhr.open('POST', `/movies/upload/?path=${encodeURIComponent(path)}`);
 
                 let lastLoaded = 0;
                 let lastTime = Date.now();
