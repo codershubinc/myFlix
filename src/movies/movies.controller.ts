@@ -22,7 +22,7 @@ export class MoviesController {
         @Req() req: Request,
         @Res() res: Response
     ) {
-        const { title  } = req.body as { title: string};
+        const { title } = req.body as { title: string };
         console.log('req.body ==========================================', req.body);
         console.log('file ==========================================', file);
 
@@ -38,7 +38,7 @@ export class MoviesController {
             filename: file.originalname,
             newPath,
             body: req.body,
-        }); 
+        });
     }
 
     @Get('config/r/:id')
