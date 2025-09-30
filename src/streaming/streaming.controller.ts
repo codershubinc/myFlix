@@ -1,6 +1,8 @@
-import { Controller, Get, Req, Res,  } from '@nestjs/common'; 
-import type { Request, Response } from 'express'; 
-import { createStream, createStreamWithFfmpeg } from 'src/utils/createStream'; 
+import { Controller, Get, Req, Res, } from '@nestjs/common';
+import type { Request, Response } from 'express';
+import { createReadStream } from 'fs';
+import { join } from 'path';
+import { createStream, createStreamWithFfmpeg } from 'src/utils/createStream';
 
 @Controller('stream')
 export class StreamingController {
@@ -11,5 +13,5 @@ export class StreamingController {
     @Get('/f')
     streamMovieWithFfmpeg(@Res() res: Response, @Req() req: Request) {
         return createStreamWithFfmpeg(res, req);
-    }
+    } 
 }
