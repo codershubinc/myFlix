@@ -1,5 +1,5 @@
-import { Schema, Document, model, ObjectId } from 'mongoose';
-export interface Movie  { 
+import { Schema, model } from 'mongoose';
+export interface Movie {
     title: string;
     description?: string;
     releaseDate?: Date;
