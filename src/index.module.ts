@@ -1,9 +1,9 @@
 import { MoviesModule } from "./movies/movies.module";
-import { StreamingModule } from "./streaming/streaming.module"; 
+import { StreamingModule } from "./streaming/streaming.module";
 
 
 
-export const modules = [ 
+export const modules = [
     StreamingModule,
     MoviesModule
-]
+] 
