@@ -1,3 +1,5 @@
+[![wakatime](https://wakatime.com/badge/user/c8cd0c53-219b-4950-8025-0e666e97e8c8/project/0b52adb2-0737-4631-8d72-3ef44a856246.svg)](https://wakatime.com/badge/user/c8cd0c53-219b-4950-8025-0e666e97e8c8/project/0b52adb2-0737-4631-8d72-3ef44a856246)
+
 # Video Streaming App
 
 ## Overview

@@ -24,7 +24,7 @@
         const path = urlParams.get('path');
         if (path) {
             document.getElementById('urlInput').value = path;
-            video.src = 'https://stream.codershubinc.tech' + "/stream/movies/stream?path=" + path;
+            video.src = 'https://cdn.myflix.codershubinc.tech/stream?path=/home/swap/uploads/mvs/The.Tunnel.2019.1080p.BluRay.Hindi.English.DD2.0.x264.ESubs(1).mkv'
             video.load();
             video.play();
         }
@@ -37,7 +37,7 @@
     document.getElementById('loadButton').addEventListener('click', () => {
         const url = document.getElementById('urlInput').value;
         if (url) {
-            video.src = 'https://sticks-performances-matthew-twiki.trycloudflare.com' + "/stream/movies/stream?path=" + url;
+            video.src = url;
             video.load();
             video.play();
         }

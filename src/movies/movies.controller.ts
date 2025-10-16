@@ -65,23 +65,4 @@ export class MoviesController {
         }
     }
 
-    @Post('/upload')
-    @UseInterceptors(MulterUploadInterceptor('file')) // saves to 'uploads/' first
-    async uploadMovie(@Req() req, @Res() res) {
-        const { title } = req.body;
-        const file = req.file;
-
-        // Compute new path/filename using body data
-        const newPath = `/uploads/${title}_${file.originalname}`;
-        fs.renameSync(file.path, newPath);
-
-        // Respond with new file info
-        return res.status(200).json({
-            message: 'File uploaded and moved',
-            filename: file.originalname,
-            newPath,
-            body: req.body,
-        });
-    }
-
 }
