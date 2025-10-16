@@ -22,12 +22,15 @@ export class MoviesController {
         @Req() req: Request,
         @Res() res: Response
     ) {
-        const { title } = req.body as { title: string };
+        const { title , path } = req.body as { title: string , path: string};
         console.log('req.body ==========================================', req.body);
         console.log('file ==========================================', file);
 
+        if (!path || !title) {
+            return res.status(HttpStatus.BAD_REQUEST).json({ message: 'Missing title or path in body' });
+        }
         // Compute new path/filename using body data
-        const newPath = `/home/swap/Github/video-streaming-app/uploads/${title.trim().replaceAll(' ', '_')}.${file.originalname.split('.').pop()}`;
+        const newPath = `${path}/${title.trim().replaceAll(' ', '_')}.${file.originalname.split('.').pop()}`;
         console.log('newPath ==========================================', newPath);
 
         fs.renameSync(file.path, newPath);
