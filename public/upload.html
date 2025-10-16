@@ -269,6 +269,7 @@
                 // Use file name as title if title field is empty
                 const fileTitle = title || file.name.replace(/\.[^/.]+$/, ''); // Remove extension
                 formData.append('title', fileTitle);
+                formData.append('path', path);
                 const xhr = new XMLHttpRequest();
                 xhr.open('POST', `/movies/upload/?path=${encodeURIComponent(path)}`);
 
