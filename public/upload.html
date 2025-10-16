@@ -237,10 +237,7 @@
                 showStatus('Please enter an upload path.', 'error');
                 return;
             }
-            if (!title) {
-                showStatus('Please enter a title.', 'error');
-                return;
-            }
+            // Title is now optional - will use filename if not provided
             uploadButton.disabled = true;
             progressContainer.style.display = 'block';
             status.style.display = 'none';
@@ -269,7 +266,9 @@
             return new Promise((resolve, reject) => {
                 const formData = new FormData();
                 formData.append('file', file);
-                formData.append('title', title);
+                // Use file name as title if title field is empty
+                const fileTitle = title || file.name.replace(/\.[^/.]+$/, ''); // Remove extension
+                formData.append('title', fileTitle);
                 const xhr = new XMLHttpRequest();
                 xhr.open('POST', `/movies/upload/?path=${encodeURIComponent(path)}`);
 
