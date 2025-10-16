@@ -3,7 +3,7 @@ import type { Request, Response } from "express";
 import { getAvailableAssets } from "src/utils/getAvailableAssets";
 import { moviesConfig } from "./utils/moviesConf";
 import { MulterUploadInterceptor } from "src/utils/multer";
-import fs from 'fs';
+import fs, { mkdirSync } from 'fs';
 
 @Controller('movies')
 export class MoviesController {
@@ -22,17 +22,20 @@ export class MoviesController {
         @Req() req: Request,
         @Res() res: Response
     ) {
-        const { title , path } = req.body as { title: string , path: string};
+        const { title, path } = req.body as { title: string, path: string };
         console.log('req.body ==========================================', req.body);
         console.log('file ==========================================', file);
 
         if (!path || !title) {
             return res.status(HttpStatus.BAD_REQUEST).json({ message: 'Missing title or path in body' });
         }
+        console.log('file is ', file);
+
         // Compute new path/filename using body data
         const newPath = `${path}/${title.trim().replaceAll(' ', '_')}.${file.originalname.split('.').pop()}`;
         console.log('newPath ==========================================', newPath);
 
+        mkdirSync(path, { recursive: true });
         fs.renameSync(file.path, newPath);
 
         // Respond with new file info
